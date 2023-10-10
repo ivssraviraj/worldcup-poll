@@ -6,7 +6,7 @@ module.exports.loginController = async (req,res,next)=>{
 
 
 // todo change the query
-    const user = await User.findOne({"email":req.body.email})
+    const user = await User.findOne({where:{"email":req.body.email}})
 
     if(!user || user.email!==req.body.email)
         return  res.sendStatus(404)

@@ -10,18 +10,18 @@ module.exports.updateMatchResult = async (req,res,next)=>{
 
 
     try{
-    /**
-     *   req : {
-     *
-     *       winner : Integer
-     *
-     *       winner 1=> home team
-     *       winner 2 => away team
-     *   }
-     */
+        /**
+         *   req : {
+         *
+         *       winner : Integer
+         *
+         *       winner 1=> home team
+         *       winner 2 => away team
+         *   }
+         */
 
 
-    const data = req.body
+        const data = req.body
 
         console.log(data);
 
@@ -37,57 +37,61 @@ module.exports.updateMatchResult = async (req,res,next)=>{
         console.log(winner);
 
         const d =  await matches.update({"winner":winner}, {
-        where: {
-            id: req.body.id
-        }
-    })
+            where: {
+                id: req.body.id
+            }
+        })
 
         console.log(d);
 
 
         // now proceed to calculate score and rank for every user.
 
-    let users = await Users.findAll({})
+        let users = await Users.findAll({})
 
 
 
-    // using matchid check if the poll string index matches the winner number if yes, increase the rank
+        // using matchid check if the poll string index matches the winner number if yes, increase the rank
 
-    /**
-     * To check
-     * 1. wether the user played the match or not => pollString index 0 => didnt play
-     * 2. Wether he won or not
-     */
+        /**
+         * To check
+         * 1. wether the user played the match or not => pollString index 0 => didnt play
+         * 2. Wether he won or not
+         */
 
-    const matchNumber = data.id
-    let temp = users.map(d=>{
-        d = d.dataValues
-        if(parseInt(d.pollString.charAt(matchNumber-1)) !== 0) {
-            // user submitted a poll
-            d.matchesPlayed+=1
-        }
+        const matchNumber = data.id
+        let temp = users.map(d=>{
 
-        if(parseInt(d.pollString.charAt(matchNumber-1)) === data.winner){
-            // increment the rank
-            d.score+=1
+            d = d.dataValues
 
-            d.winPercentage = d.score/d.matchesPlayed
+            if(parseInt(d.pollString.charAt(matchNumber-1)) === 0) {
+                // user hasn't submitted a poll
+                return d
 
-        }
-        return d
-    })
+            }else{
+                d.matchesPlayed+=1
+                if(parseInt(d.pollString.charAt(matchNumber-1)) === data.winner){
+                    // increment the score
+                    d.score+=1
+                }
+                d.winPercentage = (d.score/d.matchesPlayed)*100
+                d.winPercentage = Math.round(d.winPercentage * 100) / 100
+
+            }
+            return d
+        })
 
         await Promise.all(temp.map( async el =>{
-        await Users.update({"score":temp[0].score, "matchesPlayed":temp[0].matchesPlayed, "winPercentage":temp[0].winPercentage}, {where:{
-                        id:temp[0].id
-                    }} )
+            await Users.update({"score": el.score, "matchesPlayed":el.matchesPlayed, "winPercentage":el.winPercentage}, {where:{
+                    id:el.id
+                }} )
 
         }))
 
 
 
-    res.sendStatus(200)
-}
+        res.sendStatus(200)
+    }
     catch(e){
         console.log(e);
         res.sendStatus(500)
@@ -103,15 +107,15 @@ module.exports.upcomingMatchController = async (req,res,next)=>{
     const d = new Date()
 
     const data = await matches.findAll({where:{
-        date:{
-            [Op.gt] : d
-        },
+            date:{
+                [Op.gt] : d
+            },
         }, order:[
             ['id','ASC']
         ],limit:6})
 
     const d1 = data.map(e => {
-       e = e.dataValues
+        e = e.dataValues
         e.pollable = true
         return e
     })
@@ -134,17 +138,10 @@ module.exports.allMatchController = async (req,res,next)=>{
 
     let date = new Date()
     d1 = d1.map(e =>{
-        if(e.date>date){
-            e.pollable = true
-        }else
-            e.pollable=false
+        e.pollable = e.date > date;
 
         return e
     })
 
-
-
     res.json(d1)
-
-
 }
